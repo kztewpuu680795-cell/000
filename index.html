@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>视频播放器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 10px;
+            margin: 0 auto;
+        }
+
+        .add-form {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .add-form input {
+            flex: 1 1 calc(100% - 80px);
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-width: 0;
+        }
+
+        .add-form button {
+            flex: 0 0 70px;
+            padding: 12px;
+            font-size: 16px;
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .add-form button:active {
+            background: #219150;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+            gap: 15px;
+        }
+
+        @media (min-width: 600px) {
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+
+            .add-form input {
+                flex: 1 1 300px;
+            }
+        }
+
+        .video-item {
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            /* 移除固定宽高比，让容器根据视频方向自适应 */
+            aspect-ratio: initial;
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            /* 根据视频方向动态设置高度 */
+            height: 0;
+            overflow: hidden;
+        }
+
+        /* 横屏视频容器 - 16:9 比例 */
+        .video-container:not(.portrait) .video-wrapper {
+            padding-bottom: 56.25%; /* 16:9 */
+        }
+
+        /* 竖屏视频容器 - 9:16 比例 */
+        .video-container.portrait .video-wrapper {
+            padding-bottom: 177.78%; /* 9:16 */
+        }
+
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #000;
+            object-fit: contain; /* 关键修改：使用contain确保完整显示视频 */
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 10;
+            padding: 0;
+        }
+
+        .remove-btn:active {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            z-index: 5;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 0, 0, 0.7);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            padding: 10px;
+            text-align: center;
+            display: none;
+        }
+
+        video::-webkit-media-controls {
+            overflow: hidden !important;
+        }
+
+        video::-webkit-media-controls-enclosure {
+            overflow: hidden !important;
+        }
+
+        video::-webkit-media-controls-panel {
+            background-color: rgba(0, 0, 0, 0.7) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <form id="addForm" class="add-form">
+            <input type="url" id="videoUrl" placeholder="输入视频URL（支持MP4/WebM）" required>
+            <input type="url" id="posterUrl" placeholder="可选海报URL">
+            <button type="submit">添加</button>
+        </form>
+
+        <div id="videoGrid" class="video-grid"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'mobileVideoList';
+        let videoList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [
+            {
+                url: 'https://files.catbox.moe/b73eoz.mp4',
+                poster: ''
+            },
+            {
+                url: 'https://files.catbox.moe/fz57ex.mp4',
+                poster: ''
+            }
+        ];
+        let allVideos = [];
+        let videoContainers = [];
+
+        function stopAllVideos(currentVideo) {
+            allVideos.forEach(video => {
+                if (video !== currentVideo && !video.paused) {
+                    video.pause();
+                    video.currentTime = 0;
+                }
+            });
+        }
+
+        // 检测视频方向并添加类名
+        function detectVideoOrientation(video, container) {
+            // 创建一个临时img元素来检测视频方向
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = function() {
+                const isPortrait = img.height > img.width;
+                if (isPortrait) {
+                    container.classList.add('portrait');
+                } else {
+                    container.classList.remove('portrait');
+                }
+                
+                // 清理临时img元素
+                URL.revokeObjectURL(img.src);
+            };
+            img.onerror = function() {
+                // 无法检测时默认使用横屏模式
+                container.classList.remove('portrait');
+            };
+            
+            // 使用视频URL创建临时对象URL进行检测
+            img.src = video.src;
+            
+            // 3秒后超时（防止无法加载）
+            setTimeout(() => {
+                if (!img.complete) {
+                    img.onerror();
+                }
+            }, 3000);
+        }
+
+        async function renderVideos() {
+            const grid = document.getElementById('videoGrid');
+            grid.innerHTML = '';
+            allVideos = [];
+            videoContainers = [];
+
+            for (const [index, item] of videoList.entries()) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'video-item';
+
+                const rmBtn = document.createElement('button');
+                rmBtn.className = 'remove-btn';
+                rmBtn.innerHTML = '&times;';
+                rmBtn.onclick = () => {
+                    if (confirm('确定要删除这个视频吗？')) {
+                        videoList.splice(index, 1);
+                        saveAndRender();
+                    }
+                };
+                wrapper.appendChild(rmBtn);
+
+                const videoContainer = document.createElement('div');
+                videoContainer.className = 'video-container';
+                
+                // 创建视频包装器（用于保持比例）
+                const videoWrapper = document.createElement('div');
+                videoWrapper.className = 'video-wrapper';
+                
+                const loader = document.createElement('div');
+                loader.className = 'loading-overlay';
+                loader.innerHTML = '<div class="spinner"></div>';
+                videoContainer.appendChild(loader);
+
+                const errorMsg = document.createElement('div');
+                errorMsg.className = 'error-message';
+                videoContainer.appendChild(errorMsg);
+
+                const video = document.createElement('video');
+                video.controls = true;
+                video.playsInline = true;
+                video.webkitPlaysInline = true;
+                video.x5VideoPlayerType = "h5";
+                video.x5VideoPlayerFullscreen = "false";
+                video.poster = item.poster || '';
+                video.preload = 'metadata';
+                video.volume = 0.5;
+                video.loop = true;
+                video.style.objectFit = 'contain'; // 确保完整显示视频
+
+                video.addEventListener('ended', () => {
+                    try {
+                        video.currentTime = 0;
+                        const playPromise = video.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.log('自动播放被阻止:', error);
+                            });
+                        }
+                    } catch (e) {
+                        console.error('循环播放错误:', e);
+                    }
+                });
+
+                video.addEventListener('error', (e) => {
+                    loader.style.display = 'none';
+                    errorMsg.style.display = 'flex';
+
+                    if (video.error) {
+                        switch (video.error.code) {
+                            case MediaError.MEDIA_ERR_ABORTED:
+                                errorMsg.textContent = '视频加载被用户取消';
+                                break;
+                            case MediaError.MEDIA_ERR_NETWORK:
+                                errorMsg.textContent = '网络错误，无法加载视频';
+                                break;
+                            case MediaError.MEDIA_ERR_DECODE:
+                                errorMsg.textContent = '视频解码失败';
+                                break;
+                            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                                errorMsg.textContent = '不支持的视频格式';
+                                break;
+                            default:
+                                errorMsg.textContent = '视频加载失败';
+                        }
+                    } else {
+                        errorMsg.textContent = '视频加载失败';
+                    }
+                });
+
+                allVideos.push(video);
+                videoContainers.push(videoContainer);
+
+                video.addEventListener('play', () => {
+                    stopAllVideos(video);
+                });
+
+                try {
+                    loader.style.display = 'flex';
+                    video.src = item.url;
+
+                    // 等待视频元数据加载后检测方向
+                    video.addEventListener('loadedmetadata', async () => {
+                        // 检测视频方向
+                        detectVideoOrientation(video, videoContainer);
+                        loader.style.display = 'none';
+                    });
+
+                    video.addEventListener('canplay', () => {
+                        loader.style.display = 'none';
+                    });
+
+                } catch (error) {
+                    console.error('设置视频源错误:', error);
+                    loader.style.display = 'none';
+                    errorMsg.style.display = 'flex';
+                    errorMsg.textContent = '设置视频源失败';
+                }
+
+                videoWrapper.appendChild(video);
+                videoContainer.appendChild(videoWrapper);
+                wrapper.appendChild(videoContainer);
+                grid.appendChild(wrapper);
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(videoList));
+            renderVideos();
+        }
+
+        document.getElementById('addForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const url = document.getElementById('videoUrl').value.trim();
+            const poster = document.getElementById('posterUrl').value.trim();
+
+            if (!url) return;
+
+            const videoExt = url.split('.').pop().toLowerCase();
+            const allowedExt = ['mp4', 'webm', 'mov', 'm4v'];
+            if (!allowedExt.includes(videoExt)) {
+                alert('请输入有效的视频URL（支持MP4, WebM, MOV, M4V格式）');
+                return;
+            }
+
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态: ${response.status}`);
+                }
+            } catch (error) {
+                alert('无法访问视频URL，请检查网络连接或URL是否正确');
+                return;
+            }
+
+            videoList.push({ url, poster: poster || '' });
+            this.reset();
+            saveAndRender();
+        });
+
+        renderVideos();
+    </script>
+</body>
+</html>
