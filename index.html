@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>视频播放器</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .add-form {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .add-form input {
+            flex: 1 1300px;
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .add-form button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .add-form button:hover {
+            background: #219150;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .video-item {
+            background: #fff;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .video-item video {
+            width: 100%;
+            display: block;
+        }
+
+        .video-item .info {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            color: #555;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <form id="addForm" class="add-form">
+            <input type="url" id="videoUrl" placeholder="请输入视频 URL">
+            <input type="url" id="posterUrl" placeholder="请输入 poster URL">
+            <button type="submit">添加视频</button>
+        </form>
+        <div id="videoGrid" class="video-grid"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'directVideoList';
+        let videoList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        if (videoList.length === 0) {
+            videoList = [
+                { url: 'https://files.catbox.moe/b73eoz.mp4', poster: '' },
+                { url: 'https://files.catbox.moe/fz57ex.mp4', poster: '' }
+            ];
+        }
+
+        async function renderVideos() {
+            const grid = document.getElementById('videoGrid');
+            grid.innerHTML = '';
+
+            videoList.forEach((item, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'video-item';
+
+                const video = document.createElement('video');
+                video.src = item.url;
+                video.poster = item.poster || '';
+                video.controls = true;
+                video.loop = true; // 添加循环播放属性
+                video.autoplay = true; // 添加自动播放属性
+                video.muted = true; // 静音播放以避免自动播放问题
+
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.textContent = item.url;
+
+                wrapper.appendChild(video);
+                wrapper.appendChild(info);
+                grid.appendChild(wrapper);
+            });
+        }
+
+        async function saveAndRender() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(videoList));
+            renderVideos();
+        }
+
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const url = document.getElementById('videoUrl').value.trim();
+            const poster = document.getElementById('posterUrl').value.trim();
+
+            if (!url) return;
+
+            const videoExt = url.split('.').pop().toLowerCase();
+            const allowedExt = ['mp4', 'webm', 'ogg', 'ogv'];
+
+            if (!allowedExt.includes(videoExt)) {
+                alert('仅支持 MP4 / WebM / OGG 格式');
+                return;
+            }
+
+            videoList.push({ url, poster: poster || '' });
+            this.reset();
+            saveAndRender();
+        });
+
+        renderVideos();
+    </script>
+</body>
+</html>
