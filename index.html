@@ -1,0 +1,126 @@
+<script>
+    const STORAGE_KEY = 'directVideoList';
+
+    let videoList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    if (videoList.length === 0) {
+        videoList = [
+            {url: 'https://files.catbox.moe/b73eoz.mp4', poster: ''},
+            {url: 'https://files.catbox.moe/fz57ex.mp4', poster: ''}
+        ];
+    }
+
+    // Add the new video URL
+    const newVideoUrl = 'https://files.catbox.moe/uez79c.mp4';
+    const videoExists = videoList.some(video => video.url === newVideoUrl);
+
+    if (!videoExists) {
+        videoList.push({url: newVideoUrl, poster: ''});
+    }
+
+    //Also check if the existing video is there.
+    const existingVideoUrl = 'https://files.catbox.moe/fz57ex.mp4';
+    const existingVideoExists = videoList.some(video => video.url === existingVideoUrl);
+
+    if (!existingVideoExists) {
+        videoList.push({url: existingVideoUrl, poster: ''});
+    }
+
+    let allVideos = [];
+
+    function stopAllVideos(currentVideo) {
+        allVideos.forEach(video => {
+            if (video !== currentVideo) {
+                video.pause();
+                video.currentTime = 0;
+                video.controls = false; // Hide controls for other videos
+            }
+        });
+    }
+
+    async function renderVideos() {
+        const grid = document.getElementById('videoGrid');
+        grid.innerHTML = '';
+        allVideos = [];
+
+        for (const [index, item] of videoList.entries()) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'video-item';
+
+            // Remove the remove button
+            // const rmBtn = document.createElement('button');
+            // rmBtn.className = 'remove-btn';
+            // rmBtn.textContent = 'X';
+            // rmBtn.title = 'Remove Video';
+            // rmBtn.onclick = () => {
+            //     videoList.splice(index, 1);
+            //     saveAndRender();
+            // };
+            // wrapper.appendChild(rmBtn);
+
+            const video = document.createElement('video');
+            video.controls = false; // Initially hide controls
+            video.poster = item.poster || '';
+            video.preload = 'metadata';
+            video.volume = 0.3;
+            // video.loop = true;  // Removed loop attribute
+
+            allVideos.push(video);
+
+            video.addEventListener('click', () => {
+                video.controls = true; // Show controls on click
+                if (video.paused) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+            });
+
+            video.addEventListener('play', () => {
+                stopAllVideos(video);
+            });
+
+            // Add ended event listener for single video looping
+            video.addEventListener('ended', () => {
+                video.currentTime = 0;
+                video.play();
+            });
+
+            try {
+                const blob = await urlToBlob(item.url);
+                const blobUrl = URL.createObjectURL(blob);
+                video.src = blobUrl;
+
+                video.addEventListener('ended', () => {
+                    URL.revokeObjectURL(blobUrl);
+                });
+            } catch (error) {
+                console.error("Error creating blob URL:", error);
+                video.src = item.url;
+            }
+
+            wrapper.appendChild(video);
+
+            const info = document.createElement('div');
+            info.className = 'info';
+            info.textContent = item.url;
+            wrapper.appendChild(info);
+            // info.style.display = 'none';
+
+            grid.appendChild(wrapper);
+        }
+    }
+
+    async function urlToBlob(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return blob;
+    }
+
+    function saveAndRender() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(videoList));
+        renderVideos();
+    }
+
+    renderVideos();
+</script>
