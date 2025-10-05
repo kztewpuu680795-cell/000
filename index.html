@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Title</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .add-form {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .add-form input {
+            flex: 1 1 300px;
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .add-form button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            background: #27ae60;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .add-form button:hover {
+            background: #219150;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .video-item {
+            background: #fff;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+            position: relative;
+        }
+
+        .video-item video {
+            width: 100%;
+            display: block;
+        }
+
+        .video-item .info {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            color: #555;
+            background: #fafafa;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            padding: 0.2rem 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .remove-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .video-item .info {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="videoGrid" class="video-grid"></div>
+</div>
+
+<script defer>
+    const STORAGE_KEY = 'directVideoList';
+
+    let videoList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    if (videoList.length === 0) {
+        videoList = [
+            {url: 'https://files.catbox.moe/b73eoz.mp4', poster: ''},
+            {url: 'https://files.catbox.moe/fz57ex.mp4', poster: ''},
+        ];
+    } else {
+        const newVideoUrl = 'https://files.catbox.moe/fz57ex.mp4';
+        const videoExists = videoList.some(video => video.url === newVideoUrl);
+
+        if (!videoExists) {
+            videoList.push({url: newVideoUrl, poster: ''});
+        }
+    }
+
+    // Add the new video URL
+    const newVideoUrl2 = 'https://files.catbox.moe/uez79c.mp4';
+    const videoExists2 = videoList.some(video => video.url === newVideoUrl2);
+    if (!videoExists2) {
+        videoList.push({url: newVideoUrl2, poster: ''});
+    }
+
+
+    let allVideos = [];
+
+    function stopAllVideos(currentVideo) {
+        allVideos.forEach(video => {
+            if (video !== currentVideo) {
+                video.pause();
+                video.currentTime = 0;
+                video.controls = false; // Hide controls for other videos
+            }
+        });
+    }
+
+    async function renderVideos() {
+        const grid = document.getElementById('videoGrid');
+        grid.innerHTML = '';
+        allVideos = [];
+
+        for (const [index, item] of videoList.entries()) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'video-item';
+
+            // Remove the remove button
+            // const rmBtn = document.createElement('button');
+            // rmBtn.className = 'remove-btn';
+            // rmBtn.textContent = 'X';
+            // rmBtn.title = 'Remove Video';
+            // rmBtn.onclick = () => {
+            //     videoList.splice(index, 1);
+            //     saveAndRender();
+            // };
+            // wrapper.appendChild(rmBtn);
+
+            const video = document.createElement('video');
+            video.controls = false; // Initially hide controls
+            video.poster = item.poster || '';
+            video.preload = 'metadata';
+            video.volume = 0.3;
+            video.loop = true;
+
+            allVideos.push(video);
+
+            video.addEventListener('click', () => {
+                video.controls = true; // Show controls on click
+                if (video.paused) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+            });
+
+            video.addEventListener('play', () => {
+                stopAllVideos(video);
+            });
+
+            try {
+                const blob = await urlToBlob(item.url);
+                const blobUrl = URL.createObjectURL(blob);
+                video.src = blobUrl;
+
+                video.addEventListener('ended', () => {
+                    URL.revokeObjectURL(blobUrl);
+                });
+            } catch (error) {
+                console.error("Error creating blob URL:", error);
+                video.src = item.url;
+            }
+
+            wrapper.appendChild(video);
+
+            const info = document.createElement('div');
+            info.className = 'info';
+            info.textContent = item.url;
+            wrapper.appendChild(info);
+
+            grid.appendChild(wrapper);
+        }
+    }
+
+    async function urlToBlob(url) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return blob;
+    }
+
+    function saveAndRender() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(videoList));
+        renderVideos();
+    }
+
+    renderVideos();
+</script>
+</body>
+
+</html>
