@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⁡</title>
+    <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        #mediaGrid {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            justify-content: flex-start;
+        }
+
+        .media-item {
+            width: calc(25% - 20px);
+            margin: 10px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .media-item video, .media-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .info {
+            display: none;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 1;
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
+
+        .remove-btn:hover {
+            background-color: rgba(255, 0, 0, 0.9);
+        }
+
+        @media (max-width: 768px) {
+            .media-item {
+                width: calc(50% - 20px);
+            }
+        }
+        @media (max-width: 480px) {
+            .media-item {
+                width: 100%;
+            }
+        }
+
+        #fullscreenContainer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #fullscreenImage {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <div id="mediaGrid"></div>
+    <div id="fullscreenContainer">
+        <img id="fullscreenImage" src="" alt="Fullscreen Image">
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'directMediaList';
+        let mediaList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        if (mediaList.length === 0) {
+            mediaList = [
+                { url: 'https://files.catbox.moe/b73eoz.mp4', type: 'video', poster: '' },
+                { url: 'https://files.catbox.moe/fz57ex.mp4', type: 'video', poster: '' },
+                { url: 'https://files.catbox.moe/2yehbo.jpg', type: 'image' },
+                { url: 'https://files.catbox.moe/ya36e9.jpg', type: 'image' },
+                { url: 'https://files.catbox.moe/9agbby.jpg', type: 'image' },
+                { url: 'https://files.catbox.moe/y6xoig.jpg', type: 'image' }
+            ];
+            saveAndRender();
+        }
+
+        let allVideos = [];
+        const fullscreenContainer = document.getElementById('fullscreenContainer');
+        const fullscreenImage = document.getElementById('fullscreenImage');
+
+        function stopAllVideos(currentVideo) {
+            allVideos.forEach(video => {
+                if (video !== currentVideo) {
+                    video.pause();
+                    video.currentTime = 0;
+                    video.controls = false;
+                }
+            });
+        }
+
+        function showFullscreenImage(imageUrl, altText) {
+            fullscreenImage.src = imageUrl;
+            fullscreenImage.alt = altText;
+            fullscreenContainer.style.display = 'flex';
+        }
+
+        function hideFullscreenImage() {
+            fullscreenContainer.style.display = 'none';
+            fullscreenImage.src = '';
+        }
+
+        async function renderMedia() {
+            const grid = document.getElementById('mediaGrid');
+            grid.innerHTML = '';
+            allVideos = [];
+
+            for (const [index, item] of mediaList.entries()) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'media-item';
+
+                let mediaElement;
+
+                if (item.type === 'video') {
+                    const video = document.createElement('video');
+                    video.controls = false;
+                    video.poster = item.poster || '';
+                    video.preload = 'metadata';
+                    video.volume = 0.3;
+                    video.src = item.url;
+
+                    allVideos.push(video);
+
+                    video.addEventListener('click', () => {
+                        if (video.paused) {
+                            video.play();
+                        } else {
+                            video.pause();
+                        }
+                    });
+
+                    video.addEventListener('dblclick', () => {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        } else {
+                            video.requestFullscreen();
+                        }
+                    });
+
+                    video.addEventListener('fullscreenchange', () => {
+                        video.controls = !!document.fullscreenElement;
+                    });
+
+                    video.addEventListener('play', () => {
+                        stopAllVideos(video);
+                    });
+                    
+                    mediaElement = video;
+
+                } else if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = item.url;
+                    img.alt = `User-submitted image from ${new URL(item.url).hostname}`;
+                    mediaElement = img;
+
+                    img.addEventListener('dblclick', (event) => {
+                        event.preventDefault();
+                        showFullscreenImage(img.src, img.alt);
+                    });
+
+                } else {
+                    console.warn(`Unknown media type: ${item.type}`);
+                    continue;
+                }
+
+                wrapper.appendChild(mediaElement);
+
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.textContent = item.url;
+                wrapper.appendChild(info);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '×';
+                removeBtn.title = 'Remove this item';
+                removeBtn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to remove this item?')) {
+                        mediaList.splice(index, 1);
+                        saveAndRender();
+                    }
+                });
+                wrapper.appendChild(removeBtn);
+
+                grid.appendChild(wrapper);
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mediaList));
+            renderMedia();
+        }
+
+        fullscreenContainer.addEventListener('click', hideFullscreenImage);
+
+        renderMedia();
+    </script>
+</body>
+</html>
