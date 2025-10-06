@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Gallery</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        #mediaGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .media-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #888;
+        }
+
+        .media-item img,
+        .media-item video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .media-item video {
+            object-fit: cover;
+        }
+
+        .info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 5px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Fullscreen Image Overlay */
+        #fullscreenOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #fullscreenOverlay img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        #closeFullscreen {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 2em;
+            cursor: pointer;
+        }
+
+        /* Loading Indicator */
+        .loading-indicator {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Custom Video Player Styles */
+        .custom-video-player {
+            position: relative;
+            width: 100%;
+        }
+
+        .custom-video-player video {
+            width: 100%;
+            display: block;
+        }
+
+        .custom-video-player .controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
+
+        .custom-video-player .controls button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1em;
+            padding: 5px;
+        }
+
+        .custom-video-player .controls input[type="range"] {
+            flex: 1;
+            margin: 0 5px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="mediaGrid"></div>
+    <div id="fullscreenOverlay">
+        <span id="closeFullscreen">&times;</span>
+        <img src="" alt="Fullscreen Image">
+    </div>
+
+    <script>
+        // Sample Media List (Replace with your actual data)
+        const mediaList = [
+            { type: 'video', url: 'https://files.catbox.moe/0m584r.mp4', poster: 'https://example.com/poster1.jpg' },
+            { type: 'image', url: 'https://files.catbox.moe/f9tk8d.jpg' },
+            { type: 'video', url: 'https://files.catbox.moe/v587zn.mp4', poster: 'https://example.com/poster2.jpg' },
+            { type: 'image', url: 'https://files.catbox.moe/9d8x8o.jpg' },
+            { type: 'video', url: 'https://files.catbox.moe/s2b98x.mp4', poster: 'https://example.com/poster3.jpg' },
+            { type: 'image', url: 'https://files.catbox.moe/8w9y9i.jpg' },
+            { type: 'video', url: 'https://files.catbox.moe/z8478h.mp4' },
+        ];
+
+        let allVideos = [];
+        const fullscreenOverlay = document.getElementById('fullscreenOverlay');
+        const fullscreenImage = document.querySelector('#fullscreenOverlay img');
+        const closeFullscreenButton = document.getElementById('closeFullscreen');
+
+        // Configuration
+        const defaultVolume = 0.3;
+        const errorMessage = "Failed to load media.";
+
+        // Finalization Registry for Blob URL cleanup
+        const registry = new FinalizationRegistry((blobUrl) => {
+            URL.revokeObjectURL(blobUrl);
+            console.log(`Revoked Blob URL: ${blobUrl}`);
+        });
+
+        // Helper function to handle Blob URL creation and cleanup
+        async function createBlobURL(url) {
+            try {
+                const blob = await urlToBlob(url);
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Create a WeakRef to the Blob object.
+                const ref = new WeakRef(blob);
+
+                // Register the Blob URL for cleanup when the Blob is garbage collected.
+                registry.register(ref, blobUrl);
+
+                return blobUrl;
+            } catch (error) {
+                console.error("Error creating blob URL:", error);
+                throw new Error(errorMessage);
+            }
+        }
+
+        // Helper function to convert URL to Blob
+        async function urlToBlob(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const blob = await response.blob();
+            return blob;
+        }
+
+        // Helper function to handle errors
+        function handleMediaError(error, mediaElement) {
+            console.error("Media Error:", error);
+            mediaElement.textContent = errorMessage;
+            mediaElement.style.color = 'red';
+        }
+
+        // Stop all other videos except the current one
+        function stopAllVideos(currentVideo) {
+            allVideos.forEach(video => {
+                if (video !== currentVideo) {
+                    video.pause();
+                }
+            });
+        }
+
+        // Create Custom Video Player Element
+        async function createCustomVideoPlayer(item) {
+            const player = document.createElement('div');
+            player.className = 'custom-video-player';
+
+            const video = document.createElement('video');
+            video.controls = false;
+            video.poster = item.poster || '';
+            video.preload = 'metadata';
+            video.volume = defaultVolume;
+
+            allVideos.push(video);
+
+            const controls = document.createElement('div');
+            controls.className = 'controls';
+
+            const playPauseButton = document.createElement('button');
+            playPauseButton.className = 'play-pause-button';
+            playPauseButton.textContent = 'Play';
+            controls.appendChild(playPauseButton);
+
+            const volumeSlider = document.createElement('input');
+            volumeSlider.type = 'range';
+            volumeSlider.className = 'volume-slider';
+            volumeSlider.min = '0';
+            volumeSlider.max = '1';
+            volumeSlider.step = '0.1';
+            volumeSlider.value = defaultVolume;
+            controls.appendChild(volumeSlider);
+
+            const fullscreenButton = document.createElement('button');
+            fullscreenButton.className = 'fullscreen-button';
+            fullscreenButton.textContent = 'Fullscreen';
+            controls.appendChild(fullscreenButton);
+
+            player.appendChild(video);
+            player.appendChild(controls);
+
+            // Event Listeners
+            playPauseButton.addEventListener('click', () => {
+                if (video.paused) {
+                    video.play();
+                    playPauseButton.textContent = 'Pause';
+                } else {
+                    video.pause();
+                    playPauseButton.textContent = 'Play';
+                }
+            });
+
+            volumeSlider.addEventListener('input', () => {
+                video.volume = volumeSlider.value;
+            });
+
+            fullscreenButton.addEventListener('click', () => {
+                if (player.requestFullscreen) {
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    } else {
+                        player.requestFullscreen();
+                    }
+                } else if (player.mozRequestFullScreen) { /* Firefox */
+                    if (document.mozFullScreenElement) {
+                        document.mozCancelFullScreen();
+                    } else {
+                        player.mozRequestFullScreen();
+                    }
+                } else if (player.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                    if (document.webkitFullscreenElement) {
+                        document.webkitExitFullscreen();
+                    } else {
+                        player.webkitRequestFullscreen();
+                    }
+                } else if (player.msRequestFullscreen) { /* IE/Edge */
+                    if (document.msFullscreenElement) {
+                        document.msExitFullscreen();
+                    } else {
+                        player.msRequestFullscreen();
+                    }
+                }
+            });
+
+            video.addEventListener('play', () => {
+                stopAllVideos(video);
+            });
+
+            try {
+                const blobUrl = await createBlobURL(item.url);
+                video.src = blobUrl;
+            } catch (error) {
+                handleMediaError(error, player); // Handle error on the player element
+            }
+
+            return player;
+        }
+
+        // Create Image Element
+        async function createImageElement(item) {
+            const img = document.createElement('img');
+            try {
+                const blobUrl = await createBlobURL(item.url);
+                img.src = blobUrl;
+            } catch (error) {
+                handleMediaError(error, img); // Handle error on the image element
+            }
+
+            img.addEventListener('dblclick', (event) => {
+                event.preventDefault();
+                showFullscreenImage(img.src);
+            });
+
+            return img;
+        }
+
+        // Show Fullscreen Image
+        function showFullscreenImage(src) {
+            fullscreenImage.src = src;
+            fullscreenOverlay.style.display = 'flex';
+        }
+
+        // Close Fullscreen Image
+        closeFullscreenButton.addEventListener('click', () => {
+            fullscreenOverlay.style.display = 'none';
+        });
+
+        // Render Media Items with Lazy Loading
+        async function renderMedia() {
+            const grid = document.getElementById('mediaGrid');
+            grid.innerHTML = '';
+            allVideos = [];
+
+            const observer = new IntersectionObserver(async (entries) => {
+                for (const entry of entries) {
+                    if (entry.isIntersecting) {
+                        const wrapper = entry.target;
+                        const item = wrapper.dataset.mediaItem ? JSON.parse(wrapper.dataset.mediaItem) : null;
+
+                        if (item) {
+                            let mediaElement;
+                            try {
+                                if (item.type === 'video') {
+                                    mediaElement = await createCustomVideoPlayer(item); // Use custom video player
+                                } else if (item.type === 'image') {
+                                    mediaElement = await createImageElement(item);
+                                } else {
+                                    console.warn(`Unknown media type: ${item.type}`);
+                                    continue;
+                                }
+                                wrapper.innerHTML = ''; // Clear loading indicator
+                                wrapper.appendChild(mediaElement);
+
+                                const info = document.createElement('div');
+                                info.className = 'info';
+                                info.textContent = item.url;
+                                wrapper.appendChild(info);
+
+                            } catch (error) {
+                                // Handle media creation error
+                                wrapper.innerHTML = `<div style="color: red;">${errorMessage}</div>`;
+                            } finally {
+                                observer.unobserve(wrapper);
+                            }
+                        }
+                    }
+                }
+            });
+
+            for (const [index, item] of mediaList.entries()) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'media-item';
+                wrapper.dataset.mediaItem = JSON.stringify(item);
+
+                // Add loading indicator
+                wrapper.innerHTML = '<div class="loading-indicator"></div>';
+
+                grid.appendChild(wrapper);
+                observer.observe(wrapper);
+            }
+        }
+
+        // Initial Render
+        renderMedia();
+
+    </script>
+
+</body>
+</html>
