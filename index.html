@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Media Player</title>
+    <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+    <style> /* ... (same styles as before) ... */ </style>
+</head>
+<body>
+    <input type="file" id="fileInput" multiple accept="video/*, image/*">
+    <div id="mediaGrid"></div>
+    <div id="fullscreeContainer">
+        <img id="fullscreeImage" src="" alt="Fullscreen Image">
+    </div>
+    <script>
+        const STORAGE_KEY = 'directMediaList';
+        let mediaList = []; // Start empty - files will be added by the user
+
+        // Get references to elements
+        const fileInput = document.getElementById('fileInput');
+        const mediaGrid = document.getElementById('mediaGrid');
+        const fullscreeContainer = document.getElementById('fullscreeContainer');
+        const fullscreeImage = document.getElementById('fullscreeImage');
+
+        let allVideos = [];
+
+        // Function to stop all videos except the current one
+        function stopAllVideos(currentVideo) { /* ... (same as before) ... */ }
+
+        // Function to show an image in fullscreen
+        function showFullscreenImage(imageUrl) { /* ... (same as before) ... */ }
+
+        // Function to hide the fullscreen image
+        function hideFullscreenImage() { /* ... (same as before) ... */ }
+
+
+        // Function to render the media grid
+        async function renderMedia() {
+            mediaGrid.innerHTML = '';
+            allVideos = [];
+
+            for (const [index, item] of mediaList.entries()) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'media-item';
+
+                let mediaElement;
+
+                if (item.type === 'video') {
+                    const video = document.createElement('video');
+                    video.controls = false;
+                    video.poster = item.poster || '';
+                    video.preload = 'metadata';
+                    video.volume = 0.3;
+
+                    video.src = item.url; // URL is already a blob URL
+
+                    video.addEventListener('ended', () => {
+                        video.currentTime = 0;
+                        video.play();
+                    });
+
+                    video.addEventListener('click', () => {
+                        if (video.paused) {
+                            video.play();
+                        } else {
+                            video.pause();
+                        }
+                    });
+
+                    video.addEventListener('dblclick', () => {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        } else {
+                            video.requestFullscreen();
+                        }
+                    });
+
+                    video.addEventListener('fullscreenchange', () => {
+                        if (document.fullscreenElement) {
+                            video.controls = true;
+                        } else {
+                            video.controls = false;
+                        }
+                    });
+
+                    allVideos.push(video);
+                    mediaElement = video;
+                } else if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = item.url;  // URL is already a blob URL
+
+                    img.addEventListener('dblclick', () => {
+                        showFullscreenImage(img.src);
+                    });
+                    mediaElement = img;
+                } else {
+                    console.warn(`Unknown media type: ${item.type}`);
+                    continue;
+                }
+
+                wrapper.appendChild(mediaElement);
+                mediaGrid.appendChild(wrapper);
+            }
+        }
+
+        // Event listener for file input
+        fileInput.addEventListener('change', (event) => {
+            const files = event.target.files;
+
+            for (const file of files) {
+                const fileType = file.type;
+
+                if (fileType.startsWith('video/')) {
+                    const url = URL.createObjectURL(file);
+                    mediaList.push({ url: url, type: 'video', poster: '' });
+                } else if (fileType.startsWith('image/')) {
+                    const url = URL.createObjectURL(file);
+                    mediaList.push({ url: url, type: 'image' });
+                } else {
+                    console.warn(`Unsupported file type: ${fileType}`);
+                }
+            }
+
+            renderMedia();
+        });
+
+        // Event listener to close fullscreen on double click of the container
+        fullscreeContainer.addEventListener('dblclick', hideFullscreenImage);
+
+        // Initial render (empty grid)
+        renderMedia();
+    </script>
+</body>
+</html>
