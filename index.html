@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>a</title>
+    <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+    <link rel="preload" href="https://files.catbox.moe/b73eoz.mp4" as="video" type="video/mp4">
+    <style>
+        /* ... (CSS styles) ... */
+    </style>
+</head>
+<body>
+    <div id="mediaGrid"></div>
+    <div id="fullscreenContainer">
+        <img id="fullscreenImage" src="" alt="Fullscreen Image">
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'directMediaList';
+        let mediaList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+        // Initialize mediaList if empty
+        if (mediaList.length === 0) {
+            mediaList = [
+                {url: 'https://files.catbox.moe/b73eoz.mp4', type: 'video', poster: ''},
+                {url: 'https://files.catbox.moe/fz57ex.mp4', type: 'video', poster: ''},
+                {url: 'https://files.catbox.moe/2yehbo.jpg', type: 'image'},
+                {url: 'https://files.catbox.moe/ya36e9.jpg', type: 'image'},
+                {url: 'https://files.catbox.moe/9agbby.jpg', type: 'image'},
+                {url: 'https://files.catbox.moe/y6xoig.jpg', type: 'image'}
+            ];
+        }
+
+        let allVideos = [];
+        const fullscreenContainer = document.getElementById('fullscreenContainer');
+        const fullscreenImage = document.getElementById('fullscreenImage');
+
+        function stopAllVideos(currentVideo) {
+            allVideos.forEach(video => {
+                if (video !== currentVideo) {
+                    video.pause();
+                    video.currentTime = 0;
+                    video.controls = false;
+                }
+            });
+        }
+
+        function showFullscreenImage(imageUrl) {
+            fullscreenImage.src = imageUrl;
+            fullscreenContainer.style.display = 'flex';
+        }
+
+        function hideFullscreenImage() {
+            fullscreenContainer.style.display = 'none';
+            fullscreenImage.src = '';
+        }
+
+        // Function to render a single media item
+        function createMediaElement(item) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'media-item';
+
+            let mediaElement;
+
+            if (item.type === 'video') {
+                const video = document.createElement('video');
+                video.controls = false;
+                video.poster = item.poster || '';
+                video.preload = 'metadata';
+                video.volume = 0.3;
+                video.src = item.url; // Direct URL
+
+                allVideos.push(video);
+
+                video.addEventListener('click', () => {
+                    if (video.paused) {
+                        video.play();
+                    } else {
+                        video.pause();
+                    }
+                });
+
+                video.addEventListener('dblclick', () => {
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    } else {
+                        video.requestFullscreen();
+                    }
+                });
+
+                video.addEventListener('fullscreenchange', () => {
+                    video.controls = !!document.fullscreenElement;
+                });
+
+                video.addEventListener('play', () => {
+                    stopAllVideos(video);
+                });
+
+                video.addEventListener('ended', () => {
+                    video.currentTime = 0;
+                    video.play();
+                });
+
+                mediaElement = video;
+            } else if (item.type === 'image') {
+                const img = document.createElement('img');
+                img.src = item.url; // Direct URL
+                mediaElement = img;
+
+                img.addEventListener('dblclick', (event) => {
+                    event.preventDefault();
+                    showFullscreenImage(img.src);
+                });
+            } else {
+                console.warn(`Unknown media type: ${item.type}`);
+                return null;
+            }
+
+            wrapper.appendChild(mediaElement);
+
+            const info = document.createElement('div');
+            info.className = 'info';
+            info.textContent = item.url;
+            wrapper.appendChild(info);
+
+            return wrapper;
+        }
+
+        // Function to render the media grid
+        async function renderMedia() {
+            const grid = document.getElementById('mediaGrid');
+            grid.innerHTML = ''; // Clear the grid
+            allVideos = [];
+
+            // Create media elements in a batch
+            const mediaElements = mediaList.map(createMediaElement).filter(Boolean); // Filter out null elements
+
+            // Append all elements to the grid at once
+            const fragment = document.createDocumentFragment();
+            mediaElements.forEach(element => fragment.appendChild(element));
+            grid.appendChild(fragment);
+        }
+
+        // Function to save the media list and re-render the grid
+        function saveAndRender() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(mediaList));
+            renderMedia();
+        }
+
+        // Event listener to close fullscreen on double click of the container
+        fullscreenContainer.addEventListener('dblclick', hideFullscreenImage);
+
+        // Initial render
+        renderMedia();
+    </script>
+</body>
+</html>
