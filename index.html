@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Gallery</title>
+    <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        #mediaGrid {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            justify-content: flex-start;
+        }
+
+        .media-item {
+            width: calc(25% - 20px);
+            margin: 10px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+            box-sizing: border-box;
+            background-color: white;
+        }
+
+        .media-item video, .media-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+        }
+
+        .info {
+            display: none;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 5px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 12px;
+            z-index: 10;
+        }
+
+        .remove-btn:hover {
+            background-color: rgba(255, 0, 0, 0.9);
+        }
+
+        .loading-error {
+            padding: 10px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .media-item {
+                width: 100%;
+            }
+        }
+
+        #fullscreenContainer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        #fullscreenImage {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <div id="mediaGrid"></div>
+    <div id="fullscreenContainer">
+        <img id="fullscreenImage" src="" alt="Fullscreen view">
+    </div>
+
+    <script>
+        // Use in-memory storage instead of localStorage
+        let mediaList = [
+            {url: 'https://files.catbox.moe/b73eoz.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/in5uez.jpg', type: 'image'},
+            {url: 'https://files.catbox.moe/fz57ex.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/loausl.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/qkkx6i.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/w23som.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/qkzsp6.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/ddqrde.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/60753g.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/ncsdko.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/kbjqs9.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/akkudt.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/5y4h9h.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/lrkgvk.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/khicll.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/7mtszp.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/hia3q4.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/y5qf2w.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/bb8atd.mp4', type: 'video', poster: ''},
+            {url: 'https://files.catbox.moe/ia5tz1.mp4', type: 'video', poster: ''}
+        ];
+
+        let allVideos = [];
+        let blobUrls = []; // Track all blob URLs for cleanup
+        const fullscreenContainer = document.getElementById('fullscreenContainer');
+        const fullscreenImage = document.getElementById('fullscreenImage');
+
+        function stopAllVideos(currentVideo) {
+            allVideos.forEach(video => {
+                if (video !== currentVideo) {
+                    video.pause();
+                    video.currentTime = 0;
+                    video.controls = false;
+                }
+            });
+        }
+
+        function showFullscreenImage(imageUrl) {
+            fullscreenImage.src = imageUrl;
+            fullscreenContainer.style.display = 'flex';
+        }
+
+        function hideFullscreenImage() {
+            fullscreenContainer.style.display = 'none';
+            fullscreenImage.src = '';
+        }
+
+        function cleanupBlobUrls() {
+            blobUrls.forEach(url => URL.revokeObjectURL(url));
+            blobUrls = [];
+        }
+
+        async function renderMedia() {
+            const grid = document.getElementById('mediaGrid');
+            grid.innerHTML = '';
+            cleanupBlobUrls(); // Clean up old blob URLs
+            allVideos = [];
+
+            for (const [index, item] of mediaList.entries()) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'media-item';
+
+                // Create remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-btn';
+                removeBtn.textContent = '✕';
+                removeBtn.setAttribute('aria-label', 'Remove item');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeMedia(index);
+                });
+                wrapper.appendChild(removeBtn);
+
+                let mediaElement;
+
+                if (item.type === 'video') {
+                    const video = document.createElement('video');
+                    video.controls = false;
+                    video.poster = item.poster || '';
+                    video.preload = 'metadata';
+                    video.volume = 0.3;
+                    video.setAttribute('aria-label', 'Video player');
+
+                    allVideos.push(video);
+
+                    video.addEventListener('click', () => {
+                        if (video.paused) {
+                            video.play();
+                        } else {
+                            video.pause();
+                        }
+                    });
+
+                    video.addEventListener('dblclick', () => {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        } else {
+                            video.requestFullscreen();
+                        }
+                    });
+
+                    video.addEventListener('fullscreenchange', () => {
+                        if (document.fullscreenElement) {
+                            video.controls = true;
+                        } else {
+                            video.controls = false;
+                        }
+                    });
+
+                    video.addEventListener('play', () => {
+                        stopAllVideos(video);
+                    });
+
+                    video.addEventListener('ended', () => {
+                        video.currentTime = 0;
+                        video.play();
+                    });
+
+                    try {
+                        const blob = await urlToBlob(item.url);
+                        const blobUrl = URL.createObjectURL(blob);
+                        blobUrls.push(blobUrl); // Track for cleanup
+                        video.src = blobUrl;
+                    } catch (error) {
+                        console.error("Error loading video:", error);
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'loading-error';
+                        errorDiv.textContent = 'Failed to load video';
+                        wrapper.appendChild(errorDiv);
+                    }
+
+                    mediaElement = video;
+
+                } else if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.setAttribute('alt', 'Gallery image');
+                    
+                    try {
+                        const blob = await urlToBlob(item.url);
+                        const blobUrl = URL.createObjectURL(blob);
+                        blobUrls.push(blobUrl); // Track for cleanup
+                        img.src = blobUrl;
+                    } catch (error) {
+                        console.error("Error loading image:", error);
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'loading-error';
+                        errorDiv.textContent = 'Failed to load image';
+                        wrapper.appendChild(errorDiv);
+                    }
+
+                    img.addEventListener('dblclick', (event) => {
+                        event.preventDefault();
+                        showFullscreenImage(img.src);
+                    });
+
+                    mediaElement = img;
+
+                } else {
+                    console.warn(`Unknown media type: ${item.type}`);
+                    continue;
+                }
+
+                if (mediaElement) {
+                    wrapper.appendChild(mediaElement);
+                }
+
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.textContent = item.url;
+                wrapper.appendChild(info);
+
+                grid.appendChild(wrapper);
+            }
+        }
+
+        async function urlToBlob(url) {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const blob = await response.blob();
+            return blob;
+        }
+
+        function removeMedia(index) {
+            mediaList.splice(index, 1);
+            renderMedia();
+        }
+
+        // Close fullscreen on click
+        fullscreenContainer.addEventListener('click', hideFullscreenImage);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', cleanupBlobUrls);
+
+        // Initial render
+        renderMedia();
+    </script>
+</body>
+</html>
