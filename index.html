@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>媒体懒点加载（点击后缓存）</title>
+    <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+
+    <style>
+        :root{
+            --gap: 10px;
+            --bg:#f0f0f0;
+            --border:#ddd;
+        }
+        body{
+            margin:0;
+            padding:0;
+            font-family:system-ui,Arial,sans-serif;
+            background:var(--bg);
+        }
+        #mediaGrid{
+            display:flex;
+            flex-wrap:wrap;
+            padding:20px;
+            gap:var(--gap);
+            box-sizing:border-box;
+        }
+        .media-item{
+            width:calc(25% - 2*var(--gap));
+            border:1px solid var(--border);
+            background:#fff;
+            box-shadow:0 2px 5px rgba(0,0,0,.1);
+            position:relative;
+            overflow:hidden;
+            border-radius:4px;
+            transition:transform .2s;
+        }
+        .media-item:hover{
+            transform:scale(1.02);
+        }
+        .media-item video,
+        .media-item img{
+            width:100%;
+            height:auto;
+            display:block;
+        }
+        /* 响应式 */
+        @media (max-width:768px){
+            .media-item{width:calc(50% - 2*var(--gap));}
+        }
+        @media (max-width:480px){
+            .media-item{width:100%;}
+        }
+
+        /* 全屏图片弹层 */
+        #fullscreenContainer{
+            display:none;
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,.85);
+            justify-content:center;
+            align-items:center;
+            z-index:1000;
+        }
+        #fullscreenImage{
+            max-width:90%;
+            max-height:90%;
+            object-fit:contain;
+            outline:none;
+        }
+
+        /* 加载占位（可自行换成 spinner） */
+        .placeholder{
+            width:100%;
+            padding-top:56.25%;   /* 16:9 比例占位 */
+            background:#e0e0e0;
+            cursor:pointer;      /* 让用户知道可以点 */
+        }
+    </style>
+</head>
+<body>
+
+<main id="mediaGrid"></main>
+
+<!-- 图片全屏弹层 -->
+<div id="fullscreenContainer" role="dialog" aria-modal="true" tabindex="-1">
+    <img id="fullscreenImage" src="" alt="">
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    /* ---------- 常量 & 数据 ---------- */
+    const STORAGE_KEY = 'directMediaList';
+    const DEFAULT_LIST = [
+        {url:'https://files.catbox.moe/b73eoz.mp4', type:'video'},
+        {url:'https://files.catbox.moe/fz57ex.mp4', type:'video'},
+        {url:'https://files.catbox.moe/2yehbo.jpg', type:'image'},
+        {url:'https://files.catbox.moe/ya36e9.jpg', type:'image'},
+        {url:'https://files.catbox.moe/9agbby.jpg', type:'image'},
+        {url:'https://files.catbox.moe/y6xoig.jpg', type:'image'},
+        {url:'https://files.catbox.moe/qkzsp6.mp4', type:'video'},
+        {url:'https://files.catbox.moe/ddqrde.mp4', type:'video'},
+        {url:'https://files.catbox.moe/60753g.mp4', type:'video'},
+        {url:'https://files.catbox.moe/ncsdko.mp4', type:'video'},
+        {url:'https://files.catbox.moe/kbjqs9.mp4', type:'video'},
+        {url:'https://files.catbox.moe/akkudt.mp4', type:'video'},
+        {url:'https://files.catbox.moe/qkkx6i.mp4', type:'video'},
+        {url:'https://files.catbox.moe/5y4h9h.mp4', type:'video'},
+        {url:'https://files.catbox.moe/khicll.mp4', type:'video'},
+        {url:'https://files.catbox.moe/lytawc.mp4', type:'video'},
+        {url:'https://files.catbox.moe/hia3q4.mp4', type:'video'},
+        {url:'https://files.catbox.moe/y5qf2w.mp4', type:'video'},
+        {url:'https://files.catbox.moe/bb8atd.mp4', type:'video'},
+        {url:'https://files.catbox.moe/ia5tz1.mp4', type:'video'}
+    ];
+    const mediaList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_LIST;
+
+    /* ---------- DOM 引用 ---------- */
+    const grid            = document.getElementById('mediaGrid');
+    const fullscreenBox  = document.getElementById('fullscreenContainer');
+    const fullscreenImg  = document.getElementById('fullscreenImage');
+
+    /* ---------- 状态 ---------- */
+    const allVideos = [];   // 用来在播放新视频时统一暂停其它视频
+
+    /* ---------- 工具函数 ---------- */
+    async function urlToBlob(url){
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} – ${url}`);
+        return await resp.blob();
+    }
+
+    function stopAllExcept(current){
+        allVideos.forEach(v => {
+            if (v !== current) v.pause();
+        });
+    }
+
+    function showImage(src, alt=''){
+        fullscreenImg.src = src;
+        fullscreenImg.alt = alt;
+        fullscreenBox.style.display = 'flex';
+        fullscreenImg.focus();
+    }
+
+    function hideImage(){
+        fullscreenBox.style.display = 'none';
+        fullscreenImg.src = '';
+        fullscreenImg.alt = '';
+    }
+
+    /* ---------- 交互（键盘） ---------- */
+    function bindKeyboardForVideo(video){
+        video.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                video.click();               // 播放 / 暂停
+            }
+            if (e.key === 'f') {
+                e.preventDefault();
+                video.dispatchEvent(new MouseEvent('dblclick')); // 进入全屏
+            }
+        });
+    }
+
+    function bindKeyboardForImg(img){
+        img.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                img.dispatchEvent(new MouseEvent('dblclick'));
+            }
+        });
+    }
+
+    /* ---------- 渲染网格（只生成占位） ---------- */
+    function renderGrid(){
+        grid.innerHTML = '';
+        allVideos.length = 0;   // 清空旧引用
+
+        mediaList.forEach((item, idx) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'media-item';
+            wrapper.dataset.idx  = idx;
+            wrapper.dataset.type = item.type;
+            wrapper.dataset.url  = item.url;
+            if (item.alt) wrapper.dataset.alt = item.alt;
+
+            // 占位块
+            const ph = document.createElement('div');
+            ph.className = 'placeholder';
+            wrapper.appendChild(ph);
+
+            // 点击占位块时才真正加载资源
+            wrapper.addEventListener('click', async () => {
+                // 防止重复加载
+                if (wrapper.dataset.loaded) return;
+                wrapper.dataset.loaded = 'true';
+
+                const {type, url, alt} = wrapper.dataset;
+                if (type === 'video') {
+                    await loadVideo(wrapper, url);
+                } else {
+                    await loadImage(wrapper, url, alt);
+                }
+            }, {once:true});   // 只触发一次
+
+            grid.appendChild(wrapper);
+        });
+    }
+
+    /* ---------- 加载视频 ---------- */
+    async function loadVideo(container, url){
+        const video = document.createElement('video');
+        video.controls = false;
+        video.preload  = 'metadata';
+        video.volume   = 0.3;
+        video.tabIndex = 0;   // 让键盘可以聚焦
+
+        // ---- 交互 ----
+        let clickTimer = null; // 防止双击时先触发一次 click
+        video.addEventListener('click', () => {
+            if (clickTimer) clearTimeout(clickTimer);
+            clickTimer = setTimeout(() => {
+                video.paused ? video.play() : video.pause();
+                clickTimer = null;
+            }, 250);
+        });
+
+        video.addEventListener('dblclick', () => {
+            if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(()=>{});
+            } else {
+                video.requestFullscreen().catch(()=>{});
+            }
+        });
+
+        video.addEventListener('fullscreenchange', () => {
+            video.controls = !!document.fullscreenElement;
+        });
+
+        video.addEventListener('play', () => stopAllExcept(video));
+        video.addEventListener('ended', () => {
+            video.currentTime = 0;
+        });
+
+        bindKeyboardForVideo(video);
+
+        // ---- 加载资源（点击后才会走到这里） ----
+        try{
+            const blob = await urlToBlob(url);
+            const blobUrl = URL.createObjectURL(blob);
+            video.src = blobUrl;
+            video.dataset.blobUrl = blobUrl; // 记录，稍后统一回收
+        }catch(e){
+            console.error('fetch video failed → fallback to direct URL', e);
+            video.src = url;
+        }
+
+        // 替换占位
+        container.innerHTML = '';
+        container.appendChild(video);
+        allVideos.push(video);
+    }
+
+    /* ---------- 加载图片 ---------- */
+    async function loadImage(container, url, alt=''){
+        const img = document.createElement('img');
+        img.alt = alt || '图片';
+        img.tabIndex = 0;
+
+        img.addEventListener('dblclick', () => showImage(img.src, img.alt));
+        bindKeyboardForImg(img);
+
+        try{
+            const blob = await urlToBlob(url);
+            const blobUrl = URL.createObjectURL(blob);
+            img.src = blobUrl;
+            img.dataset.blobUrl = blobUrl;
+        }catch(e){
+            console.error('fetch image failed → fallback to direct URL', e);
+            img.src = url;
+        }
+
+        container.innerHTML = '';
+        container.appendChild(img);
+    }
+
+    /* ---------- 全屏图片关闭交互 ---------- */
+    fullscreenBox.addEventListener('click', hideImage);
+    fullscreenBox.addEventListener('keydown', e => {
+        if (e.key === 'Escape') hideImage();
+    });
+
+    /* ---------- 页面卸载时回收 Blob URL ---------- */
+    window.addEventListener('beforeunload', () => {
+        // 视频
+        allVideos.forEach(v => {
+            if (v.dataset.blobUrl) {
+                URL.revokeObjectURL(v.dataset.blobUrl);
+                delete v.dataset.blobUrl;
+            }
+        });
+        // 图片（遍历所有 img）
+        document.querySelectorAll('#mediaGrid img').forEach(img => {
+            if (img.dataset.blobUrl) {
+                URL.revokeObjectURL(img.dataset.blobUrl);
+                delete img.dataset.blobUrl;
+            }
+        });
+    });
+
+    /* ---------- 初始化 ---------- */
+    renderGrid();
+});
+</script>
+
+</body>
+</html>
