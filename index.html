@@ -1,0 +1,470 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title></title>
+    <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+    <style>
+        :root {
+            --gap: 10px;
+            --bg: #f0f0f0;
+            --border: #ddd;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, Arial, sans-serif;
+            background: var(--bg);
+        }
+
+        #mediaGrid {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            gap: var(--gap);
+            box-sizing: border-box;
+        }
+
+        .media-item {
+            width: calc(25% - var(--gap));
+            border: 1px solid var(--border);
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
+        }
+
+        .media-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .media-item video,
+        .media-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+            cursor: pointer;
+        }
+
+        .info {
+            display: none;
+        }
+
+        /* Responsive layout */
+        @media (max-width: 768px) {
+            .media-item {
+                width: calc(50% - var(--gap));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .media-item {
+                width: 100%;
+            }
+        }
+
+        /* Fullscreen container */
+        #fullscreenContainer {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        #fullscreenImage {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            outline: none;
+            pointer-events: none;
+        }
+
+        /* Loading placeholder */
+        .placeholder {
+            width: 100%;
+            padding-top: 56.25%;
+            /* 16:9 aspect ratio */
+            background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main id="mediaGrid"></main>
+
+    <!-- Fullscreen image overlay -->
+    <div id="fullscreenContainer" role="dialog" aria-modal="true" tabindex="-1">
+        <img id="fullscreenImage" src="" alt="Fullscreen Image">
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            /* ===== Constants & Data ===== */
+            const STORAGE_KEY = 'directMediaList';
+            const DEFAULT_LIST = [{
+                url: 'https://files.catbox.moe/b73eoz.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/lq7ut6.jpg'
+            }, {
+                url: 'https://files.catbox.moe/in5uez.jpg',
+                type: 'image'
+            }, {
+                url: 'https://files.catbox.moe/fz57ex.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/8wkazh.jpg'
+            }, {
+                url: 'https://files.catbox.moe/loausl.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/c7v5ko.jpg'
+            }, {
+                url: 'https://files.catbox.moe/qkkx6i.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/06l4k7.jpg'
+            }, {
+                url: 'https://files.catbox.moe/w23som.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/4mcv1u.jpg'
+            }, {
+                url: 'https://files.catbox.moe/qkzsp6.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/8sbfgc.jpg'
+            }, {
+                url: 'https://files.catbox.moe/ddqrde.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/juwmpj.jpg'
+            }, {
+                url: 'https://files.catbox.moe/60753g.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/epdboz.jpg'
+            }, {
+                url: 'https://files.catbox.moe/ncsdko.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/a3ixgf.jpg'
+            }, {
+                url: 'https://files.catbox.moe/kbjqs9.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/48h9nu.jpg'
+            }, {
+                url: 'https://files.catbox.moe/akkuudt.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/t5xj2e.jpg'
+            }, {
+                url: 'https://files.catbox.moe/5y4h9h.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/o0q67v.jpg'
+            }, {
+                url: 'https://files.catbox.moe/lrkgvk.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/uo7r2u.jpg'
+            }, {
+                url: 'https://files.catbox.moe/khicll.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/ziedot.jpg'
+            }, {
+                url: 'https://files.catbox.moe/7mtszp.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/k6mt97.jpg'
+            }, {
+                url: 'https://files.catbox.moe/hia3q4.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/g34nbt.jpg'
+            }, {
+                url: 'https://files.catbox.moe/y5qf2w.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/boxmqe.jpg'
+            }, {
+                url: 'https://files.catbox.moe/bb8atd.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/yg2thl.jpg'
+            }, {
+                url: 'https://files.catbox.moe/ia5tz1.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/7vzq39.jpg'
+            }, {
+                url: 'https://files.catbox.moe/lytawc.mp4',
+                type: 'video',
+                poster: 'https://files.catbox.moe/cvhzaa.jpg'
+            }];
+
+            const mediaList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_LIST;
+
+            /* ===== DOM References ===== */
+            const grid = document.getElementById('mediaGrid');
+            const fullscreenBox = document.getElementById('fullscreenContainer');
+            const fullscreenImg = document.getElementById('fullscreenImage');
+
+            /* ===== State ===== */
+            const allVideos = [];
+            const blobUrls = []; // Track blob URLs for cleanup
+            let currentLoadingBlobUrl = null;
+
+            /* ===== Utility Functions ===== */
+            async function urlToBlob(url) {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status} - ${url}`);
+                return await resp.blob();
+            }
+
+            function stopAllExcept(current) {
+                allVideos.forEach(v => {
+                    if (v !== current) {
+                        v.pause();
+                    }
+                });
+            }
+
+            function showImage(src, alt = '') {
+                fullscreenImg.src = src;
+                fullscreenImg.alt = alt;
+                fullscreenBox.style.display = 'flex';
+                fullscreenImg.focus();
+            }
+
+            function hideImage() {
+                fullscreenBox.style.display = 'none';
+                fullscreenImg.src = '';
+                fullscreenImg.alt = '';
+            }
+
+            /* ===== Keyboard Interactions ===== */
+            function bindKeyboardForVideo(video) {
+                video.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        video.paused ? video.play() : video.pause();
+                    }
+                    if (e.key === 'f') {
+                        e.preventDefault();
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen().catch(() => {});
+                        } else {
+                            video.requestFullscreen().catch(() => {});
+                        }
+                    }
+                });
+            }
+
+            function bindKeyboardForImg(img) {
+                img.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        showImage(img.src, img.alt);
+                    }
+                });
+            }
+
+            /* ===== Lazy Loading Observer ===== */
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+
+                    const wrapper = entry.target;
+                    const {
+                        type,
+                        url,
+                        poster,
+                        alt
+                    } = wrapper.dataset;
+
+                    if (type === 'video') {
+                        loadVideo(wrapper, url, poster || '');
+                    } else {
+                        loadImage(wrapper, url, alt || '');
+                    }
+
+                    obs.unobserve(wrapper);
+                });
+            }, {
+                rootMargin: '200px'
+            });
+
+            /* ===== Render Grid (Placeholders) ===== */
+            function renderGrid() {
+                grid.innerHTML = '';
+                allVideos.length = 0;
+
+                mediaList.forEach((item, idx) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'media-item';
+                    wrapper.dataset.idx = idx;
+                    wrapper.dataset.type = item.type;
+                    wrapper.dataset.url = item.url;
+                    if (item.poster) wrapper.dataset.poster = item.poster;
+                    if (item.alt) wrapper.dataset.alt = item.alt;
+
+                    // Placeholder
+                    const ph = document.createElement('div');
+                    ph.className = 'placeholder';
+                    wrapper.appendChild(ph);
+
+                    grid.appendChild(wrapper);
+                    observer.observe(wrapper);
+                });
+            }
+
+            /* ===== Load Video ===== */
+            async function loadVideo(container, url, poster) {
+                const video = document.createElement('video');
+                video.controls = false;
+                video.poster = poster;
+                video.preload = 'none'; // Do not preload
+                video.volume = 0.3;
+                video.tabIndex = 0;
+
+                // Click to play/pause (with double-click detection)
+                let clickTimer = null;
+                video.addEventListener('click', () => {
+                    if (clickTimer) clearTimeout(clickTimer);
+                    clickTimer = setTimeout(() => {
+                        video.paused ? video.play() : video.pause();
+                        clickTimer = null;
+                    }, 250);
+                });
+
+                // Double click for fullscreen
+                video.addEventListener('dblclick', () => {
+                    if (clickTimer) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                    }
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(() => {});
+                    } else {
+                        video.requestFullscreen().catch(() => {});
+                    }
+                });
+
+                // Fullscreen controls
+                video.addEventListener('fullscreenchange', () => {
+                    video.controls = !!document.fullscreenElement;
+                });
+
+                video.addEventListener('play', () => stopAllExcept(video));
+
+                // Loop video on end
+                video.addEventListener('ended', () => {
+                    video.currentTime = 0;
+                    video.play();
+                });
+
+                bindKeyboardForVideo(video);
+
+                // Load resource only when video is clicked
+                const loadVideoSource = async () => {
+                    try {
+                        // Revoke previous blob URL
+                        if (currentLoadingBlobUrl) {
+                            URL.revokeObjectURL(currentLoadingBlobUrl);
+                            currentLoadingBlobUrl = null;
+                        }
+
+                        const blob = await urlToBlob(url);
+                        const blobUrl = URL.createObjectURL(blob);
+                        video.src = blobUrl;
+                        currentLoadingBlobUrl = blobUrl;
+                        blobUrls.push(blobUrl);
+                    } catch (e) {
+                        console.error('Fetch video failed – fallback to direct URL', e);
+                        video.src = url;
+                    }
+                };
+
+                video.addEventListener('click', (event) => {
+                    // Only load video source if it hasn't been loaded yet
+                    if (!video.src || video.src === window.location.href) {
+                        loadVideoSource();
+                    }
+                });
+
+                // Replace placeholder
+                container.innerHTML = '';
+                container.appendChild(video);
+                allVideos.push(video);
+            }
+
+            /* ===== Load Image ===== */
+            async function loadImage(container, url, alt = '') {
+                const img = document.createElement('img');
+                img.alt = alt || 'Image';
+                img.tabIndex = 0;
+
+                img.addEventListener('dblclick', e => {
+                    e.preventDefault();
+                    showImage(img.src, img.alt);
+                });
+
+                bindKeyboardForImg(img);
+
+                const loadImageSource = async () => {
+                    try {
+                        // Revoke previous blob URL
+                        if (currentLoadingBlobUrl) {
+                            URL.revokeObjectURL(currentLoadingBlobUrl);
+                            currentLoadingBlobUrl = null;
+                        }
+                        const blob = await urlToBlob(url);
+                        const blobUrl = URL.createObjectURL(blob);
+                        img.src = blobUrl;
+                        currentLoadingBlobUrl = blobUrl;
+                        blobUrls.push(blobUrl);
+                    } catch (e) {
+                        console.error('Fetch image failed – fallback to direct URL', e);
+                        img.src = url;
+                    }
+                };
+
+                img.addEventListener('dblclick', (event) => {
+                    // Only load image source if it hasn't been loaded yet
+                    if (!img.src || img.src === window.location.href) {
+                        loadImageSource();
+                    }
+                });
+
+                container.innerHTML = '';
+                container.appendChild(img);
+            }
+
+            /* ===== Fullscreen Image Interactions ===== */
+            fullscreenBox.addEventListener('click', hideImage);
+            fullscreenBox.addEventListener('keydown', e => {
+                if (e.key === 'Escape') hideImage();
+            });
+
+            /* ===== Cleanup on Page Unload ===== */
+            window.addEventListener('beforeunload', () => {
+                blobUrls.forEach(url => URL.revokeObjectURL(url));
+                if (currentLoadingBlobUrl) {
+                    URL.revokeObjectURL(currentLoadingBlobUrl);
+                }
+            });
+
+            /* ===== Initialize ===== */
+            renderGrid();
+        });
+    </script>
+</body>
+
+</html>
