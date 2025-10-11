@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title></title>
+  <link rel="icon" href="https://files.catbox.moe/wcygxg.png" type="image/png">
+
+  <style>
+    :root {
+      --gap: 10px;
+      --bg: #f0f0f0;
+      --border: #ddd;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--bg);
+    }
+
+    #mediaGrid {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 20px;
+      gap: var(--gap);
+      box-sizing: border-box;
+    }
+
+    .media-item {
+      width: calc(25% - var(--gap));
+      border: 1px solid var(--border);
+      background: #f0f0f0;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+
+    .media-item:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .media-item video,
+    .media-item img {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: pointer;
+    }
+
+    .info {
+      display: none;
+    }
+
+    /* Responsive layout */
+    @media (max-width: 768px) {
+      .media-item {
+        width: calc(50% - var(--gap));
+      }
+    }
+
+    @media (max-width: 480px) {
+      .media-item {
+        width: 100%;
+      }
+    }
+
+    /* Fullscreen container */
+    #fullscreenContainer {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    #fullscreenImage {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+      outline: none;
+      pointer-events: none;
+    }
+
+    /* Loading placeholder */
+    .media-item .thumbnail {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: pointer;
+      filter: blur(5px);
+      transition: filter 0.3s;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main id="mediaGrid"></main>
+
+  <!-- Fullscreen image overlay -->
+  <div id="fullscreenContainer" role="dialog" aria-modal="true" tabindex="-1">
+    <img id="fullscreenImage" src="" alt="Fullscreen Image">
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(registration => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(error => {
+          console.error('Service Worker registration failed:', error);
+        });
+    }
+
+    const STORAGE_KEY = 'directMediaList';
+    const DEFAULT_LIST = [{
+      url: 'https://files.catbox.moe/b73eoz.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/lq7ut6.jpg',
+      thumbnail: 'https://files.catbox.moe/lq7ut6.jpg'
+    }, {
+      url: 'https://files.catbox.moe/in5uez.jpg',
+      type: 'image',
+      thumbnail: 'https://files.catbox.moe/in5uez.jpg'
+    }, {
+      url: 'https://files.catbox.moe/fz57ex.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/8wkazh.jpg',
+      thumbnail: 'https://files.catbox.moe/8wkazh.jpg'
+    }, {
+      url: 'https://files.catbox.moe/loausl.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/c7v5ko.jpg',
+      thumbnail: 'https://files.catbox.moe/c7v5ko.jpg'
+    }, {
+      url: 'https://files.catbox.moe/qkkx6i.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/06l4k7.jpg',
+      thumbnail: 'https://files.catbox.moe/06l4k7.jpg'
+    }, {
+      url: 'https://files.catbox.moe/w23som.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/4mcv1u.jpg',
+      thumbnail: 'https://files.catbox.moe/4mcv1u.jpg'
+    }, {
+      url: 'https://files.catbox.moe/qkzsp6.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/8sbfgc.jpg',
+      thumbnail: 'https://files.catbox.moe/8sbfgc.jpg'
+    }, {
+      url: 'https://files.catbox.moe/ddqrde.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/juwmpj.jpg',
+      thumbnail: 'https://files.catbox.moe/juwmpj.jpg'
+    }, {
+      url: 'https://files.catbox.moe/60753g.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/epdboz.jpg',
+      thumbnail: 'https://files.catbox.moe/epdboz.jpg'
+    }, {
+      url: 'https://files.catbox.moe/ncsdko.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/a3ixgf.jpg',
+      thumbnail: 'https://files.catbox.moe/a3ixgf.jpg'
+    }, {
+      url: 'https://files.catbox.moe/kbjqs9.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/48h9nu.jpg',
+      thumbnail: 'https://files.catbox.moe/48h9nu.jpg'
+    }, {
+      url: 'https://files.catbox.moe/akkudt.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/o0q67v.jpg',
+      thumbnail: 'https://files.catbox.moe/o0q67v.jpg'
+    }, {
+      url: 'https://files.catbox.moe/5y4h9h.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/t5xj2e.jpg',
+      thumbnail: 'https://files.catbox.moe/t5xj2e.jpg'
+    }, {
+      url: 'https://files.catbox.moe/lrkgvk.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/uo7r2u.jpg',
+      thumbnail: 'https://files.catbox.moe/uo7r2u.jpg'
+    }, {
+      url: 'https://files.catbox.moe/khicll.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/ziedot.jpg',
+      thumbnail: 'https://files.catbox.moe/ziedot.jpg'
+    }, {
+      url: 'https://files.catbox.moe/7mtszp.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/k6mt97.jpg',
+      thumbnail: 'https://files.catbox.moe/k6mt97.jpg'
+    }, {
+      url: 'https://files.catbox.moe/hia3q4.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/g34nbt.jpg',
+      thumbnail: 'https://files.catbox.moe/g34nbt.jpg'
+    }, {
+      url: 'https://files.catbox.moe/y5qf2w.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/boxmqe.jpg',
+      thumbnail: 'https://files.catbox.moe/boxmqe.jpg'
+    }, {
+      url: 'https://files.catbox.moe/bb8atd.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/yg2thl.jpg',
+      thumbnail: 'https://files.catbox.moe/yg2thl.jpg'
+    }, {
+      url: 'https://files.catbox.moe/ia5tz1.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/7vzq39.jpg',
+      thumbnail: 'https://files.catbox.moe/7vzq39.jpg'
+    }, {
+      url: 'https://files.catbox.moe/lytawc.mp4',
+      type: 'video',
+      poster: 'https://files.catbox.moe/cvhzaa.jpg',
+      thumbnail: 'https://files.catbox.moe/cvhzaa.jpg'
+    }];
+
+    const mediaList = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_LIST;
+
+    const mediaGrid = document.getElementById('mediaGrid');
+    const fullscreenContainer = document.getElementById('fullscreenContainer');
+    const fullscreenImage = document.getElementById('fullscreenImage');
+
+    function createMediaItem(item) {
+      const mediaItem = document.createElement('div');
+      mediaItem.className = 'media-item';
+      mediaItem.tabIndex = 0;
+
+      let mediaElement;
+      if (item.type === 'image') {
+        mediaElement = document.createElement('img');
+        mediaElement.src = item.thumbnail;
+        mediaElement.alt = ''; // Set a proper alt text if available
+      } else if (item.type === 'video') {
+        mediaElement = document.createElement('video');
+        mediaElement.poster = item.poster;
+        mediaElement.muted = true;
+        mediaElement.loop = true;
+        mediaElement.playsInline = true;
+        mediaElement.src = item.thumbnail;
+      }
+
+      mediaElement.loading = 'lazy'; // Enable lazy loading
+
+      mediaItem.appendChild(mediaElement);
+
+      mediaItem.addEventListener('click', () => {
+        if (item.type === 'image') {
+          fullscreenImage.src = item.url;
+          fullscreenContainer.style.display = 'flex';
+          fullscreenContainer.focus();
+        }
+      });
+
+      return mediaItem;
+    }
+
+    function renderMediaGrid() {
+      mediaGrid.innerHTML = ''; // Clear existing content
+      mediaList.forEach(item => {
+        const mediaItem = createMediaItem(item);
+        mediaGrid.appendChild(mediaItem);
+      });
+    }
+
+    renderMediaGrid();
+
+    fullscreenContainer.addEventListener('click', () => {
+      fullscreenContainer.style.display = 'none';
+    });
+
+    fullscreenContainer.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' || event.key === ' ') {
+        fullscreenContainer.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+
+</html>
