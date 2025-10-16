@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -102,10 +102,43 @@
         .media-item .thumbnail.loaded {
             filter: blur(0);
         }
+
+        /* Pagination styles */
+        #pagination {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        #pagination button {
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            color: #333;
+            padding: 8px 12px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        #pagination button:hover {
+            background-color: #ddd;
+        }
+
+        #pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
     <main id="mediaGrid"></main>
+
+    <!-- Pagination controls -->
+    <div id="pagination">
+        <button id="prevPageBtn" disabled>上一页</button>
+        <button id="nextPageBtn" disabled>下一页</button>
+    </div>
 
     <!-- Fullscreen image overlay -->
     <div id="fullscreenContainer" role="dialog" aria-modal="true" tabindex="-1">
@@ -523,6 +556,144 @@
                     type: 'video',
                     poster: 'https://files.catbox.moe/l30lbz.jpg',
                     thumbnail: 'https://files.catbox.moe/l30lbz.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/85cba6.mp4,
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/ge6gd8.jpg',
+                    thumbnail: 'https://files.catbox.moe/ge6gd8.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/n21pr9.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/hpwbhx.jpg',
+                    thumbnail: 'https://files.catbox.moe/hpwbhx.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/d2widz.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/na79sh.jpg',
+                    thumbnail: 'https://files.catbox.moe/na79sh.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/i0atdf.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/4xmom1.jpg',
+                    thumbnail: 'https://files.catbox.moe/4xmom1.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/qyyst1.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/lz8bex.jpg',
+                    thumbnail: 'https://files.catbox.moe/lz8bex.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/hy85cn.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/q2vq3n.jpg',
+                    thumbnail: 'https://files.catbox.moe/q2vq3n.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/kbef18.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/05308c.jpg',
+                    thumbnail: 'https://files.catbox.moe/05308c.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/dpx8u6.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/yvvqy5.jpg',
+                    thumbnail: 'https://files.catbox.moe/yvvqy5.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/q1b098.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/433sdf.jpg',
+                    thumbnail: 'https://files.catbox.moe/433sdf.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/yoekmx.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/5ues1w.jpg',
+                    thumbnail: 'https://files.catbox.moe/5ues1w.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/0cauha.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/4n32js.jpg',
+                    thumbnail: 'https://files.catbox.moe/4n32js.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/5ybjoz.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/uahi60.jpg',
+                    thumbnail: 'https://files.catbox.moe/uahi60.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/n0ajla.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/5034l4.jpg',
+                    thumbnail: 'https://files.catbox.moe/5034l4.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/9zoxqp.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/sg4qy5.jpg',
+                    thumbnail: 'https://files.catbox.moe/sg4qy5.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/1qgoc3.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/axwr2y.jpg',
+                    thumbnail: 'https://files.catbox.moe/axwr2y.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/4o9wyw.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/cabj78.jpg',
+                    thumbnail: 'https://files.catbox.moe/cabj78.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/np3wec.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/bwq8ua.jpg',
+                    thumbnail: 'https://files.catbox.moe/bwq8ua.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/glhyqn.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/v5edvk.jpg',
+                    thumbnail: 'https://files.catbox.moe/v5edvk.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/brby0e.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/amrwy0.jpg',
+                    thumbnail: 'https://files.catbox.moe/amrwy0.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/ep7mas.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/06t0qa.jpg',
+                    thumbnail: 'https://files.catbox.moe/06t0qa.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/kuzw6j.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/u3ka6e.jpg',
+                    thumbnail: 'https://files.catbox.moe/u3ka6e.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/4w62ne.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/5v421q.jpg',
+                    thumbnail: 'https://files.catbox.moe/5v421q.jpg'
+                },
+                {
+                    url: 'https://files.catbox.moe/gs7g8f.mp4',
+                    type: 'video',
+                    poster: 'https://files.catbox.moe/y0owh1.jpg',
+                    thumbnail: 'https://files.catbox.moe/y0owh1.jpg'
                 }
             ];
 
@@ -530,9 +701,14 @@
             const grid = document.getElementById('mediaGrid');
             const fullscreenContainer = document.getElementById('fullscreenContainer');
             const fullscreenImage = document.getElementById('fullscreenImage');
+            const prevPageBtn = document.getElementById('prevPageBtn');
+            const nextPageBtn = document.getElementById('nextPageBtn');
             const allVideos = [];
             const blobUrls = [];
             let currentVideoBlobUrl = null;
+
+            const itemsPerPage = 16;
+            let currentPage = 1;
 
             // Helper function to convert URL to Blob (for potential future use)
             async function urlToBlob(url) {
@@ -611,13 +787,18 @@
                 rootMargin: '200px' // Preload a bit before it's visible
             });
 
-            function renderGrid() {
+            function renderPage(page) {
                 grid.innerHTML = '';
                 allVideos.length = 0; // Clear the array
-                mediaList.forEach((item, idx) => {
+
+                const startIndex = (page - 1) * itemsPerPage;
+                const endIndex = Math.min(startIndex + itemsPerPage, mediaList.length);
+
+                for (let i = startIndex; i < endIndex; i++) {
+                    const item = mediaList[i];
                     const wrapper = document.createElement('div');
                     wrapper.className = 'media-item';
-                    wrapper.dataset.idx = idx;
+                    wrapper.dataset.idx = i;
                     wrapper.dataset.type = item.type;
                     wrapper.dataset.url = item.url;
                     if (item.poster) wrapper.dataset.poster = item.poster;
@@ -641,7 +822,14 @@
                     wrapper.appendChild(thumbnailImg);
                     grid.appendChild(wrapper);
                     observer.observe(wrapper);
-                });
+                }
+
+                updatePaginationButtons();
+            }
+
+            function updatePaginationButtons() {
+                prevPageBtn.disabled = currentPage === 1;
+                nextPageBtn.disabled = currentPage * itemsPerPage >= mediaList.length;
             }
 
             async function loadVideo(container, url, poster, thumbnail) {
@@ -740,14 +928,22 @@
                 blobUrls.forEach(url => URL.revokeObjectURL(url));
             });
 
-            renderGrid();
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage(currentPage);
+                }
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPage * itemsPerPage < mediaList.length) {
+                    currentPage++;
+                    renderPage(currentPage);
+                }
+            });
+
+            renderPage(1); // Initial render
         });
     </script>
 </body>
 </html>
-
-
-
-
-
-
