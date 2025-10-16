@@ -108,6 +108,7 @@
             display: flex;
             justify-content: center;
             padding: 10px;
+            align-items: center; /* 垂直居中对齐 */
         }
 
         #pagination button {
@@ -129,6 +130,16 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        #pageInfo {
+            margin: 0 10px;
+        }
+
+        #pageInput {
+            width: 40px;
+            text-align: center;
+            margin: 0 5px;
+        }
     </style>
 </head>
 <body>
@@ -137,7 +148,14 @@
     <!-- Pagination controls -->
     <div id="pagination">
         <button id="prevPageBtn" disabled>上一页</button>
+        <span id="pageInfo">第 <span id="currentPage">1</span> 页 / 共 <span id="totalPages">1</span> 页</span>
         <button id="nextPageBtn" disabled>下一页</button>
+        <span>
+            跳转到
+            <input type="number" id="pageInput" min="1">
+            页
+            <button id="goToPageBtn">跳转</button>
+        </span>
     </div>
 
     <!-- Fullscreen image overlay -->
@@ -558,7 +576,7 @@
                     thumbnail: 'https://files.catbox.moe/l30lbz.jpg'
                 },
                 {
-                    url: 'https://files.catbox.moe/85cba6.mp4',
+                    url: 'https://files.catbox.moe/85cba6.mp4,
                     type: 'video',
                     poster: 'https://files.catbox.moe/ge6gd8.jpg',
                     thumbnail: 'https://files.catbox.moe/ge6gd8.jpg'
@@ -703,12 +721,17 @@
             const fullscreenImage = document.getElementById('fullscreenImage');
             const prevPageBtn = document.getElementById('prevPageBtn');
             const nextPageBtn = document.getElementById('nextPageBtn');
+            const goToPageBtn = document.getElementById('goToPageBtn');
+            const pageInput = document.getElementById('pageInput');
+            const currentPageSpan = document.getElementById('currentPage');
+            const totalPagesSpan = document.getElementById('totalPages');
             const allVideos = [];
             const blobUrls = [];
             let currentVideoBlobUrl = null;
 
             const itemsPerPage = 16;
             let currentPage = 1;
+            let totalPages = Math.ceil(mediaList.length / itemsPerPage);
 
             // Helper function to convert URL to Blob (for potential future use)
             async function urlToBlob(url) {
@@ -825,11 +848,17 @@
                 }
 
                 updatePaginationButtons();
+                updatePageInfo();
             }
 
             function updatePaginationButtons() {
                 prevPageBtn.disabled = currentPage === 1;
-                nextPageBtn.disabled = currentPage * itemsPerPage >= mediaList.length;
+                nextPageBtn.disabled = currentPage === totalPages;
+            }
+
+            function updatePageInfo() {
+                currentPageSpan.textContent = currentPage;
+                totalPagesSpan.textContent = totalPages;
             }
 
             async function loadVideo(container, url, poster, thumbnail) {
@@ -936,9 +965,20 @@
             });
 
             nextPageBtn.addEventListener('click', () => {
-                if (currentPage * itemsPerPage < mediaList.length) {
+                if (currentPage < totalPages) {
                     currentPage++;
                     renderPage(currentPage);
+                }
+            });
+
+            goToPageBtn.addEventListener('click', () => {
+                const page = parseInt(pageInput.value, 10);
+                if (!isNaN(page) && page >= 1 && page <= totalPages) {
+                    currentPage = page;
+                    renderPage(currentPage);
+                } else {
+                    alert("请输入有效的页码 (1-" + totalPages + ")");
+                    pageInput.value = ''; // Clear the input
                 }
             });
 
@@ -947,4 +987,3 @@
     </script>
 </body>
 </html>
-
