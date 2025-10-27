@@ -1,6 +1,6 @@
 ﻿// service-worker.js
 
-const CACHE_NAME = 'direct-media-cache-v003';
+const CACHE_NAME = 'direct-media-cache-v004';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -64,3 +64,4 @@ self.addEventListener('activate', (event) => {
     })
   );
 });
+
