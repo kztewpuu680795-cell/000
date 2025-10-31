@@ -1,6 +1,6 @@
 ﻿// service-worker.js
 
-const CACHE_NAME = 'direct-media-cache-v018';
+const CACHE_NAME = 'direct-media-cache-v019';
 const urlsToCache = [
   '/',
   '/index.html',
